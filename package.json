@@ -10,9 +10,7 @@
   },
   "scripts": {
     "start": "node server/index.js",
-    "dev": "nodemon server/index.js",
-    "init:db": "node -e \"require('./server/db')\"",
-    "seed": "node server/db/seed.js"
+    "dev": "nodemon server/index.js"
   },
   "dependencies": {
     "express": "^4.19.2",

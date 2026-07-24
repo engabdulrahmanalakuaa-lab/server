@@ -1,64 +1,156 @@
 'use strict';
-/**
- * قاعدة البيانات - SQLite (better-sqlite3)
- * على Render يُفضّل ربط Persistent Disk بمسار /data
- */
-const path = require('path');
-const fs = require('fs');
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'data', 'license.db');
-
-// إنشاء المجلد إن لم يكن موجوداً
-const dbDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
-
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
-
-/**
- * v5.7.6: إضافة عمود بأمان (لا يفشل إن كان العمود موجوداً مسبقاً)
- */
-function safeAlter(table, column, definition) {
-    try {
-        // فحص وجود العمود عبر PRAGMA table_info
-        const cols = db.prepare(`PRAGMA table_info(${table})`).all();
-        if (cols.some(c => c.name === column)) return; // موجود
-        db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
-        console.log(`[db] safeAlter added: ${table}.${column}`);
-    } catch (e) {
-        // اطبع تحذير فقط إذا لم يكن السبب "duplicate"
-        const msg = e && e.message || String(e);
-        if (!/duplicate column|already exists/i.test(msg)) {
-            console.warn(`[db] safeAlter ${table}.${column} failed:`, msg);
-        }
-    }
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+    console.error('❌ [DB Error]: DATABASE_URL is missing in environment variables!');
 }
 
-// تطبيق الـ schema
-function initSchema() {
-    const schemaPath = path.join(__dirname, 'schema.sql');
-    const sql = fs.readFileSync(schemaPath, 'utf8');
-    db.exec(sql);
+const pool = new Pool({
+    connectionString: connectionString,
+    ssl: { rejectUnauthorized: false }
+});
 
-    // v5.7.6: ترقية الأعمدة على القواعد الموجودة (لا يفشل إن كانت جديدة)
-    safeAlter('clients', 'business_type', 'TEXT');
-    safeAlter('clients', 'invoice_template', 'TEXT');
-    safeAlter('licenses', 'suspended', "INTEGER DEFAULT 0"); // تعليق مؤقت (منفصل عن revoked)
-    safeAlter('licenses', 'suspended_at', 'TEXT');
-    safeAlter('licenses', 'suspended_reason', 'TEXT');
-    safeAlter('licenses', 'suspended_by', 'TEXT');
-    safeAlter('licenses', 'ip_address', 'TEXT');
-    safeAlter('licenses', 'user_agent', 'TEXT');
-    safeAlter('licenses', 'last_ip', 'TEXT');
+pool.on('error', (err) => {
+    console.error('❌ [Neon PG Error]:', err);
+});
 
-    console.log('[db] schema applied at', DB_PATH);
+async function initSchema() {
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS clients (
+                id SERIAL PRIMARY KEY,
+                client_name VARCHAR(200) NOT NULL,
+                client_phone VARCHAR(50),
+                client_email VARCHAR(200),
+                country VARCHAR(100),
+                city VARCHAR(100),
+                address VARCHAR(500),
+                notes VARCHAR(1000),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS activation_keys (
+                id SERIAL PRIMARY KEY,
+                activation_key VARCHAR(100) UNIQUE NOT NULL,
+                client_id INT REFERENCES clients(id) ON DELETE SET NULL,
+                business_type VARCHAR(50) NOT NULL,
+                invoice_template VARCHAR(50) NOT NULL,
+                duration_days INT DEFAULT 30,
+                max_activations INT DEFAULT 1,
+                used_activations INT DEFAULT 0,
+                expires_at TIMESTAMP,
+                status VARCHAR(20) DEFAULT 'active',
+                notes VARCHAR(500),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS licenses (
+                id SERIAL PRIMARY KEY,
+                activation_key_id INT REFERENCES activation_keys(id) ON DELETE CASCADE,
+                client_id INT REFERENCES clients(id) ON DELETE SET NULL,
+                machine_id VARCHAR(128) NOT NULL,
+                fingerprint VARCHAR(128),
+                business_type VARCHAR(50),
+                invoice_template VARCHAR(50),
+                issued_at TIMESTAMP NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                duration_days INT NOT NULL,
+                last_heartbeat_at TIMESTAMP,
+                heartbeat_count INT DEFAULT 1,
+                client_version VARCHAR(50),
+                status VARCHAR(20) DEFAULT 'active',
+                revoked_at TIMESTAMP,
+                revoked_reason VARCHAR(500),
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS license_events (
+                id SERIAL PRIMARY KEY,
+                license_id INT REFERENCES licenses(id) ON DELETE SET NULL,
+                event_type VARCHAR(50) NOT NULL,
+                machine_id VARCHAR(128),
+                fingerprint VARCHAR(128),
+                ip_address VARCHAR(64),
+                user_agent VARCHAR(256),
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role VARCHAR(50) DEFAULT 'admin',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS stats_cache (
+                id SERIAL PRIMARY KEY,
+                key_name VARCHAR(100) UNIQUE NOT NULL,
+                value_json TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query('COMMIT');
+        console.log('✅ [Neon PG] تم تهيئة الجداول بنجاح');
+    } catch (err) {
+        if (client) await client.query('ROLLBACK');
+        console.error('❌ [Neon Schema Error]:', err.message);
+    } finally {
+        if (client) client.release();
+    }
 }
 
 initSchema();
 
-module.exports = db;
-module.exports.DB_PATH = DB_PATH;
-module.exports.safeAlter = safeAlter;
+function translateSql(sql) {
+    let index = 0;
+    return sql.replace(/\?/g, () => {
+        index++;
+        return `$${index}`;
+    });
+}
+
+const dbWrapper = {
+    pool,
+    query: (text, params) => pool.query(text, params),
+    prepare: (sql) => {
+        const pgSql = translateSql(sql);
+        return {
+            get: async (...params) => {
+                const res = await pool.query(pgSql, params);
+                return res.rows[0] || null;
+            },
+            all: async (...params) => {
+                const res = await pool.query(pgSql, params);
+                return res.rows;
+            },
+            run: async (...params) => {
+                const res = await pool.query(pgSql, params);
+                return {
+                    changes: res.rowCount,
+                    lastInsertRowid: res.rows && res.rows[0] && res.rows[0].id ? res.rows[0].id : null
+                };
+            }
+        };
+    }
+};
+
+module.exports = dbWrapper;

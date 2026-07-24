@@ -1,6 +1,6 @@
 {
   "name": "ts-pro-license-server",
-  "version": "5.7.6",
+  "version": "5.7.0",
   "description": "تقنيات سوفت Pro - خادم الترخيص والواجهة الويب (Render.com)",
   "main": "server/index.js",
   "author": "تقنيات سوفت - م/ عبدالرحمن الاكوع",
@@ -17,7 +17,7 @@
   "dependencies": {
     "express": "^4.19.2",
     "cors": "^2.8.5",
-    "better-sqlite3": "^11.3.0",
+    "pg": "^8.11.5",
     "bcryptjs": "^2.4.3",
     "ws": "^8.18.0",
     "dotenv": "^16.4.5"

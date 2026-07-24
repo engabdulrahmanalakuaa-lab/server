@@ -2,10 +2,6 @@
 const { Pool } = require('pg');
 
 const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-    console.error('❌ [DB Error]: DATABASE_URL is missing in environment variables!');
-}
-
 const pool = new Pool({
     connectionString: connectionString,
     ssl: { rejectUnauthorized: false }
@@ -15,6 +11,7 @@ pool.on('error', (err) => {
     console.error('❌ [Neon PG Error]:', err);
 });
 
+// تهيئة الجداول تلقائياً عند التشغيل
 async function initSchema() {
     let client;
     try {
@@ -96,15 +93,6 @@ async function initSchema() {
                 password_hash TEXT NOT NULL,
                 role VARCHAR(50) DEFAULT 'admin',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS stats_cache (
-                id SERIAL PRIMARY KEY,
-                key_name VARCHAR(100) UNIQUE NOT NULL,
-                value_json TEXT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
 

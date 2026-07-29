@@ -7,17 +7,30 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const API_KEY = process.env.API_KEY;
+// ─── القيم الافتراضية (يجب أن تتطابق مع lib/cloud-sync.js في التطبيق) ───
+const DEFAULT_API_KEY = 'technologies_soft_pro_default_api_key_change_me_before_deploy';
 
-if (!JWT_SECRET) {
-    console.error('[auth] ❌ JWT_SECRET غير مضبوط!');
-    process.exit(1);
+// JWT_SECRET: إن لم يوجد نولّد واحداً عشوائياً (لكن سيتغيّر مع كل إعادة تشغيل!)
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.trim() === '') {
+    JWT_SECRET = crypto.randomBytes(64).toString('hex');
+    console.warn('[auth] ⚠️  JWT_SECRET غير مضبوط — تم توليد قيمة عشوائية مؤقتة.');
+    console.warn('[auth] ⚠️  الرموز (tokens) ستُبطَل مع كل إعادة تشغيل للسرفر.');
+    console.warn('[auth] ⚠️  اضبط JWT_SECRET في Render → Environment للاستخدام الإنتاجي.');
+} else {
+    console.log('[auth] ✅ JWT_SECRET مضبوط بشكل صحيح');
 }
-if (!API_KEY) {
-    console.error('[auth] ❌ API_KEY غير مضبوط!');
-    process.exit(1);
+
+// API_KEY: إن لم يوجد نستخدم القيمة الافتراضية (المطابقة للتطبيق)
+let API_KEY = process.env.API_KEY;
+if (!API_KEY || API_KEY.trim() === '') {
+    API_KEY = DEFAULT_API_KEY;
+    console.warn('[auth] ⚠️  API_KEY غير مضبوط في Environment — استخدام القيمة الافتراضية.');
+    console.warn('[auth] ⚠️  يُنصح بضبط API_KEY خاص بك في Render → Environment قبل الإنتاج.');
+} else {
+    console.log('[auth] ✅ API_KEY مضبوط بشكل صحيح');
 }
 
 /**
@@ -74,4 +87,4 @@ function requireAuth(req, res, next) {
     next();
 }
 
-module.exports = { signDeviceToken, verifyDeviceToken, requireApiKey, requireAuth };
+module.exports = { signDeviceToken, verifyDeviceToken, requireApiKey, requireAuth, API_KEY, JWT_SECRET };

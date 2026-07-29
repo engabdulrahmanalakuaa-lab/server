@@ -23,7 +23,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { query } = require('../db');
-const { signDeviceToken, requireApiKey, requireAuth } = require('../middleware/auth');
+const { signDeviceToken, requireApiKey, requireAuth, API_KEY } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ router.post('/register', requireApiKey, async (req, res) => {
         }
 
         const companyId = Number.isInteger(company_id) ? company_id : 1;
-        const apiKeyHash = await bcrypt.hash(process.env.API_KEY, 10);
+        const apiKeyHash = await bcrypt.hash(API_KEY, 10);
 
         // UPSERT
         const result = await query(`

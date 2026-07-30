@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة - تقنيات سوفت Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f6f9; font-family: 'Segoe UI', 'Tahoma', sans-serif; }
+        .navbar { background: linear-gradient(135deg, #2c3e50, #3498db); }
+        .navbar-brand { color: white !important; font-weight: bold; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-num { font-size: 32px; font-weight: bold; color: #2c3e50; }
+        .stat-label { color: #7f8c8d; font-size: 13px; }
+        .stat-icon { font-size: 40px; opacity: 0.15; }
+        .tab-pane { padding: 20px 0; }
+        .table-container { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .key-cell { font-family: monospace; letter-spacing: 1px; background: #ecf0f1; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+        .badge-status { padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-used { background: #d1ecf1; color: #0c5460; }
+        .status-revoked { background: #f8d7da; color: #721c24; }
+        .status-expired { background: #fff3cd; color: #856404; }
+        .status-frozen { background: #e2e3e5; color: #383d41; }
+        #ws-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #95a5a6; margin-right: 6px; }
+        #ws-indicator.connected { background: #27ae60; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand"><i class="fas fa-shield-alt"></i> تقنيات سوفت Pro — لوحة الإدارة</span>
+            <div class="text-white ms-auto">
+                <span id="ws-indicator"></span>
+                <span id="ws-status">جاري الاتصال...</span>
+                <span class="mx-3">|</span>
+                <span>v5.7.0</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-dashboard"><i class="fas fa-chart-line"></i> لوحة التحكم</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-clients"><i class="fas fa-users"></i> العملاء</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-keys"><i class="fas fa-key"></i> مفاتيح التفعيل</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-licenses"><i class="fas fa-id-card"></i> التراخيص</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-events"><i class="fas fa-history"></i> سجل الأحداث</a></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Dashboard -->
+            <div class="tab-pane fade show active" id="tab-dashboard">
+                <div class="row g-3" id="stats-cards"></div>
+                <div class="row g-3 mt-3">
+                    <div class="col-md-6">
+                        <div class="table-container">
+                            <h5><i class="fas fa-chart-pie"></i> التراخيص حسب النشاط</h5>
+                            <table class="table table-sm" id="by-business-table"><tbody></tbody></table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-container">
+                            <h5><i class="fas fa-bell"></i> آخر الأحداث</h5>
+                            <table class="table table-sm" id="recent-events-table"><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clients -->
+            <div class="tab-pane fade" id="tab-clients">
+                <div class="table-container">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4><i class="fas fa-users"></i> العملاء</h4>
+                        <button class="btn btn-primary" onclick="showClientForm()"><i class="fas fa-plus"></i> عميل جديد</button>
+                    </div>
+                    <table class="table table-striped table-hover">
+                        <thead><tr>
+                            <th>#</th><th>الاسم</th><th>الهاتف</th><th>البريد</th><th>البلد</th>
+                            <th>مفاتيح</th><th>تراخيص نشطة</th><th>الإجراءات</th>
+                        </tr></thead>
+                        <tbody id="clients-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Keys -->
+            <div class="tab-pane fade" id="tab-keys">
+                <div class="table-container">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4><i class="fas fa-key"></i> مفاتيح التفعيل</h4>
+                        <button class="btn btn-primary" onclick="showKeyForm()"><i class="fas fa-plus"></i> إنشاء مفتاح</button>
+                    </div>
+                    <table class="table table-striped table-hover">
+                        <thead><tr>
+                            <th>#</th><th>المفتاح</th><th>العميل</th><th>النشاط</th><th>القالب</th>
+                            <th>المدة</th><th>التفعيلات</th><th>الحالة</th><th>الإجراءات</th>
+                        </tr></thead>
+                        <tbody id="keys-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Licenses -->
+            <div class="tab-pane fade" id="tab-licenses">
+                <div class="table-container">
+                    <h4><i class="fas fa-id-card"></i> التراخيص المُفعّلة</h4>
+                    <table class="table table-striped table-hover">
+                        <thead><tr>
+                            <th>#</th><th>العميل</th><th>معرّف الجهاز</th><th>النشاط</th>
+                            <th>الإصدار</th><th>الانتهاء</th><th>Heartbeat</th><th>الحالة</th><th>الإجراءات</th>
+                        </tr></thead>
+                        <tbody id="licenses-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Events -->
+            <div class="tab-pane fade" id="tab-events">
+                <div class="table-container">
+                    <h4><i class="fas fa-history"></i> سجل الأحداث</h4>
+                    <table class="table table-sm table-striped">
+                        <thead><tr>
+                            <th>#</th><th>التاريخ</th><th>الحدث</th><th>الترخيص</th><th>الجهاز</th><th>IP</th><th>تفاصيل</th>
+                        </tr></thead>
+                        <tbody id="events-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Client Form -->
+    <div class="modal fade" id="clientModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header"><h5><i class="fas fa-user"></i> بيانات العميل</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="client-id">
+                <div class="mb-2"><label>الاسم *</label><input class="form-control" id="client-name" required></div>
+                <div class="mb-2"><label>الهاتف</label><input class="form-control" id="client-phone"></div>
+                <div class="mb-2"><label>البريد</label><input class="form-control" id="client-email"></div>
+                <div class="row">
+                    <div class="col mb-2"><label>البلد</label><input class="form-control" id="client-country"></div>
+                    <div class="col mb-2"><label>المدينة</label><input class="form-control" id="client-city"></div>
+                </div>
+                <div class="mb-2"><label>العنوان</label><input class="form-control" id="client-address"></div>
+                <div class="mb-2"><label>ملاحظات</label><textarea class="form-control" id="client-notes"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="saveClient()">حفظ</button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- Modal: Key Form -->
+    <div class="modal fade" id="keyModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header"><h5><i class="fas fa-key"></i> إنشاء مفتاح تفعيل</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2"><label>العميل *</label>
+                    <select class="form-control" id="key-client-id"></select></div>
+                <div class="row">
+                    <div class="col mb-2"><label>نوع النشاط *</label>
+                        <select class="form-control" id="key-business-type">
+                            <optgroup label="🍽️ المطاعم والمأكولات">
+                                <option value="restaurant">مطعم</option>
+                                <option value="cafe">مقهى</option>
+                                <option value="fastfood">مطعم وجبات سريعة</option>
+                                <option value="buffet">بوفيه</option>
+                                <option value="cloud_kitchen">مطعم سحابي</option>
+                                <option value="bakery">مخبز</option>
+                            </optgroup>
+                            <optgroup label="🏥 الصحة">
+                                <option value="pharmacy">صيدلية</option>
+                                <option value="vet_pharmacy">صيدلية بيطرية</option>
+                                <option value="hospital">مستشفى</option>
+                                <option value="clinic">عيادة</option>
+                                <option value="radiology">مركز أشعة</option>
+                                <option value="lab">مختبر طبي</option>
+                            </optgroup>
+                            <optgroup label="🛒 التجزئة والمحلات">
+                                <option value="supermarket">سوبرماركت</option>
+                                <option value="electronics">محل إلكترونيات</option>
+                                <option value="jewelry">محل مجوهرات</option>
+                                <option value="perfume">محل عطور</option>
+                                <option value="clothing">محل ملابس</option>
+                                <option value="bookstore">مكتبة</option>
+                                <option value="general_store">محل تجاري عام</option>
+                                <option value="mall">مول تجاري</option>
+                            </optgroup>
+                            <optgroup label="🔧 الخدمات">
+                                <option value="car_service">مركز صيانة سيارات</option>
+                                <option value="mobile_service">مركز صيانة جوالات</option>
+                                <option value="gym">صالة رياضية</option>
+                                <option value="training_center">مركز تدريب</option>
+                                <option value="law_office">مكتب محاماة</option>
+                            </optgroup>
+                            <optgroup label="🏗️ الصناعة والمقاولات">
+                                <option value="construction_materials">مواد بناء</option>
+                                <option value="contracting">شركة مقاولات</option>
+                                <option value="engineering">مكتب هندسي</option>
+                                <option value="factory">مصنع صغير</option>
+                                <option value="concrete_factory">مصنع بلوك وخرسانة</option>
+                            </optgroup>
+                            <optgroup label="🌾 الزراعة والطاقة والمالية">
+                                <option value="fertilizer_shop">محل أسمدة ومبيدات</option>
+                                <option value="fuel_station">محطة وقود</option>
+                                <option value="electricity_station">محطة كهرباء</option>
+                                <option value="exchange_office">محل صرافة وحوالات</option>
+                            </optgroup>
+                        </select></div>
+                    <div class="col mb-2"><label>قالب الفاتورة *</label>
+                        <select class="form-control" id="key-invoice-template">
+                            <option value="receipt_80mm">حراري 80مم</option>
+                            <option value="remittance_a5">حوالة A5</option>
+                            <option value="construction_a4">إنشاءات A4</option>
+                            <option value="electricity_a5">كهرباء A5</option>
+                        </select></div>
+                </div>
+                <div class="row">
+                    <div class="col mb-2"><label>المدة (بالأيام) *</label>
+                        <select class="form-control" id="key-duration-days">
+                            <option value="1">1 يوم</option>
+                            <option value="7">7 أيام (أسبوعي)</option>
+                            <option value="30" selected>30 يوم (شهري)</option>
+                            <option value="90">90 يوم</option>
+                            <option value="180">180 يوم</option>
+                            <option value="365">365 يوم (سنوي)</option>
+                            <option value="730">سنتين</option>
+                            <option value="1825">5 سنوات</option>
+                        </select></div>
+                    <div class="col mb-2"><label>عدد التفعيلات المسموحة</label>
+                        <input type="number" class="form-control" id="key-max-activations" value="1" min="1"></div>
+                </div>
+                <div class="mb-2"><label>ملاحظات</label><textarea class="form-control" id="key-notes"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="saveKey()">إنشاء</button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- Modal: Show generated key -->
+    <div class="modal fade" id="showKeyModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5><i class="fas fa-check-circle"></i> تم إنشاء المفتاح بنجاح</h5>
+            </div>
+            <div class="modal-body text-center">
+                <p>هذا المفتاح - انسخه للعميل قبل الإغلاق:</p>
+                <div style="font-family:monospace; font-size:28px; font-weight:bold; letter-spacing:3px; padding:16px; background:#f8f9fa; border-radius:8px; margin:16px 0;" id="generated-key"></div>
+                <button class="btn btn-primary" onclick="copyGeneratedKey()"><i class="fas fa-copy"></i> نسخ</button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

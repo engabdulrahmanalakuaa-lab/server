@@ -1,0 +1,27 @@
+{
+  "name": "ts-pro-license-server",
+  "version": "5.7.0",
+  "description": "تقنيات سوفت Pro - خادم الترخيص + Neon PostgreSQL (Render.com)",
+  "main": "server/index.js",
+  "author": "تقنيات سوفت - م/ عبدالرحمن الاكوع",
+  "license": "Proprietary",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js",
+    "seed": "node server/db/seed.js",
+    "test:db": "node -e \"require('dotenv').config(); require('./server/db').healthCheck().then(r=>{console.log(r);process.exit(r.ok?0:1)})\""
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "pg": "^8.12.0",
+    "ws": "^8.18.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

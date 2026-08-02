@@ -1,9 +1,0 @@
-node_modules/
-.env
-*.log
-data/
-.DS_Store
-npm-debug.log
-yarn-error.log
-.vscode/
-.idea/

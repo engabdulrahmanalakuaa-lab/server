@@ -1,0 +1,45 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Render Blueprint — النشر التلقائي (Infrastructure as Code)
+# ═══════════════════════════════════════════════════════════════════════
+# استخدام:
+#   1) في Render Dashboard → New → Blueprint
+#   2) اربطه بمستودع GitHub
+#   3) Render يقرأ هذا الملف ويُنشئ الخدمة تلقائياً
+#   4) بعد الإنشاء، أضف DATABASE_URL و JWT_SECRET و API_KEY يدوياً في Environment
+# ═══════════════════════════════════════════════════════════════════════
+
+services:
+  - type: web
+    name: server-1-dcrb
+    runtime: node
+    plan: free
+    region: frankfurt        # قريب من Neon eu-central-1
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: PUBLIC_URL
+        value: https://server-1-dcrb.onrender.com
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "60000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "300"
+      - key: MAX_BODY_SIZE
+        value: "50mb"
+      - key: JWT_EXPIRES_IN
+        value: "30d"
+      # ── القيم الحساسة (تُضاف يدوياً في Render Dashboard) ──
+      - key: DATABASE_URL
+        sync: false          # يُطلب إدخاله يدوياً
+      - key: JWT_SECRET
+        generateValue: true  # Render يولّده تلقائياً
+      - key: API_KEY
+        sync: false          # يُطلب إدخاله يدوياً

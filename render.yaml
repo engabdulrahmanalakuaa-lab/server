@@ -20,9 +20,10 @@ services:
       - key: DATABASE_URL
         sync: false   # ⚠️ سرّي — أضفه من لوحة Render
 
-      # JWT — يجب أن يتطابق مع lib/security-native.js في الديسكتوب
+      # JWT — يجب أن يتطابق مع السرّ في الديسكتوب. سرّي: أضِفه يدوياً من لوحة Render.
+      # ⚠️ v6.9.1: لا تضع القيمة هنا (تُكشف في المستودع). استخدم قيمة قوية عشوائية (≥32 حرفاً).
       - key: JWT_SECRET
-        value: ts-pro-v5.7.0-shared-secret-2025-abdulrahman-al-akwa
+        sync: false   # ⚠️ سرّي — أضفه من لوحة Render (Environment)
 
       # Admin credentials — غيّرها لقيم قوية!
       - key: ADMIN_USERNAME

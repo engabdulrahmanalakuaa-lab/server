@@ -265,6 +265,128 @@
         </div></div>
     </div>
 
+    <!-- v6.8.0: Modal — تغيير نوع النشاط للترخيص -->
+    <div class="modal fade" id="changeBusinessTypeModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5><i class="fas fa-random"></i> تغيير نوع النشاط للترخيص</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small mb-3">
+                    <i class="fas fa-info-circle"></i>
+                    سيتم تطبيق النشاط الجديد على الجهاز عند أول اتصال (heartbeat) — قد يستغرق حتى دقيقة واحدة.
+                </div>
+                <input type="hidden" id="cbt-license-id">
+                <div class="mb-2">
+                    <label>الترخيص</label>
+                    <input type="text" class="form-control" id="cbt-license-info" readonly>
+                </div>
+                <div class="mb-2">
+                    <label>النشاط الحالي</label>
+                    <input type="text" class="form-control" id="cbt-current-business" readonly>
+                </div>
+                <div class="mb-2">
+                    <label>نوع النشاط الجديد *</label>
+                    <select class="form-control" id="cbt-new-business-type">
+                        <optgroup label="🍽️ المطاعم والمأكولات">
+                            <option value="restaurant">مطعم</option>
+                            <option value="cafe">مقهى</option>
+                            <option value="fastfood">مطعم وجبات سريعة</option>
+                            <option value="buffet">بوفيه</option>
+                            <option value="cloud_kitchen">مطعم سحابي</option>
+                            <option value="bakery">مخبز</option>
+                        </optgroup>
+                        <optgroup label="🏥 الصحة">
+                            <option value="pharmacy">صيدلية</option>
+                            <option value="vet_pharmacy">صيدلية بيطرية</option>
+                            <option value="hospital">مستشفى</option>
+                            <option value="clinic">عيادة</option>
+                            <option value="radiology">مركز أشعة</option>
+                            <option value="lab">مختبر طبي</option>
+                        </optgroup>
+                        <optgroup label="🛒 التجزئة والمحلات">
+                            <option value="supermarket">سوبرماركت</option>
+                            <option value="electronics">محل إلكترونيات</option>
+                            <option value="jewelry">محل مجوهرات</option>
+                            <option value="perfume">محل عطور</option>
+                            <option value="clothing">محل ملابس</option>
+                            <option value="bookstore">مكتبة</option>
+                            <option value="general_store">محل تجاري عام</option>
+                            <option value="mall">مول تجاري</option>
+                        </optgroup>
+                        <optgroup label="🔧 الخدمات">
+                            <option value="car_service">مركز صيانة سيارات</option>
+                            <option value="mobile_service">مركز صيانة جوالات</option>
+                            <option value="gym">صالة رياضية</option>
+                            <option value="training_center">مركز تدريب</option>
+                            <option value="law_office">مكتب محاماة</option>
+                        </optgroup>
+                        <optgroup label="🏗️ الصناعة والمقاولات">
+                            <option value="construction_materials">مواد بناء</option>
+                            <option value="contracting">شركة مقاولات</option>
+                            <option value="engineering">مكتب هندسي</option>
+                            <option value="factory">مصنع صغير</option>
+                            <option value="concrete_factory">مصنع بلوك وخرسانة</option>
+                        </optgroup>
+                        <optgroup label="🌾 الزراعة والطاقة والمالية">
+                            <option value="fertilizer_shop">محل أسمدة ومبيدات</option>
+                            <option value="fuel_station">محطة وقود</option>
+                            <option value="electricity_station">محطة كهرباء</option>
+                            <option value="exchange_office">محل صرافة وحوالات</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label>قالب الفاتورة الجديد *</label>
+                    <select class="form-control" id="cbt-new-invoice-template">
+                        <option value="receipt_80mm">حراري 80مم</option>
+                        <option value="remittance_a5">حوالة A5</option>
+                        <option value="construction_a4">إنشاءات A4</option>
+                        <option value="electricity_a5">كهرباء A5</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label>سبب التغيير (اختياري)</label>
+                    <textarea class="form-control" id="cbt-reason" rows="2" placeholder="مثال: العميل طلب تغيير نشاط النشاط من مطعم إلى مقهى"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-warning" onclick="saveChangeBusinessType()">
+                    <i class="fas fa-check"></i> تأكيد التغيير
+                </button>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- v6.8.0: Modal — عرض كود إعادة تعيين كلمة المرور -->
+    <div class="modal fade" id="resetCodeModal" tabindex="-1">
+        <div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5><i class="fas fa-key"></i> كود إعادة تعيين كلمة المرور</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="alert alert-warning small text-start mb-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>هام جداً:</strong> انسخ الكود <strong>الآن</strong> وأرسله للعميل. لن يظهر مرة أخرى بعد إغلاق النافذة.
+                    الكود صالح لمرة واحدة فقط، ولنفس الجهاز الذي تم توليده لأجله.
+                </div>
+                <p class="mb-1">الكود:</p>
+                <div style="font-family:monospace; font-size:36px; font-weight:bold; letter-spacing:6px; padding:20px; background:#fff3cd; color:#856404; border:3px dashed #ffc107; border-radius:12px; margin:16px 0;" id="reset-code-value"></div>
+                <p class="text-muted small">
+                    ⏱️ صالح حتى: <span id="reset-code-expires"></span>
+                    <br>🖥️ للجهاز: <span id="reset-code-machine" class="text-monospace"></span>
+                </p>
+                <button class="btn btn-primary" onclick="copyResetCode()"><i class="fas fa-copy"></i> نسخ الكود</button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div></div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js"></script>
 </body>

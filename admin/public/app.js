@@ -541,6 +541,12 @@ function renderLicenses() {
                         <button class="btn btn-sm btn-outline-primary" onclick="extendLicense(${l.id})" title="تمديد">
                             <i class="fas fa-clock"></i>
                         </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="changeBusinessType(${l.id})" title="تغيير النشاط">
+                            <i class="fas fa-random"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="generateResetCode(${l.id})" title="توليد كود إعادة تعيين كلمة المرور">
+                            <i class="fas fa-key"></i>
+                        </button>
                         <button class="btn btn-sm btn-outline-danger" onclick="revokeLicense(${l.id})" title="إلغاء">
                             <i class="fas fa-ban"></i>
                         </button>
@@ -601,6 +607,106 @@ async function extendLicense(id) {
     } catch (e) {
         toast('فشل التمديد: ' + e.message, 'error');
     }
+}
+
+// ============================================================
+// v6.8.0: تغيير نوع النشاط للترخيص
+// ============================================================
+function changeBusinessType(id) {
+    const lic = licensesCache.find(l => l.id === id);
+    if (!lic) { toast('الترخيص غير موجود', 'error'); return; }
+
+    document.getElementById('cbt-license-id').value = id;
+    document.getElementById('cbt-license-info').value =
+        `#${lic.id} - ${lic.client_name || '(بدون عميل)'} - ${(lic.machine_id || '').substring(0,16)}${(lic.machine_id||'').length>16?'…':''}`;
+    document.getElementById('cbt-current-business').value =
+        `${bizLabel(lic.business_type)} / ${tmplLabel(lic.invoice_template)}`;
+
+    // اضبط القوائم على القيم الحالية كنقطة بداية
+    try { document.getElementById('cbt-new-business-type').value = lic.business_type || 'restaurant'; } catch(_) {}
+    try { document.getElementById('cbt-new-invoice-template').value = lic.invoice_template || 'receipt_80mm'; } catch(_) {}
+    document.getElementById('cbt-reason').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('changeBusinessTypeModal'));
+    modal.show();
+}
+
+async function saveChangeBusinessType() {
+    const id = parseInt(document.getElementById('cbt-license-id').value, 10);
+    const business_type = document.getElementById('cbt-new-business-type').value;
+    const invoice_template = document.getElementById('cbt-new-invoice-template').value;
+    const reason = document.getElementById('cbt-reason').value || '';
+    if (!id || !business_type || !invoice_template) {
+        toast('بيانات ناقصة', 'warning');
+        return;
+    }
+    if (!confirm(`هل أنت متأكد من تغيير نشاط الترخيص #${id} إلى "${bizLabel(business_type)}" / "${tmplLabel(invoice_template)}"؟`)) {
+        return;
+    }
+    try {
+        const r = await apiFetch('/licenses/' + id + '/business-type', {
+            method: 'PUT',
+            body: { business_type, invoice_template, reason }
+        });
+        toast('تم تغيير النشاط بنجاح. سيتم تطبيقه على الجهاز عند أول heartbeat.', 'success');
+        try { bootstrap.Modal.getInstance(document.getElementById('changeBusinessTypeModal')).hide(); } catch(_) {}
+        loadLicenses();
+        loadDashboard();
+    } catch (e) {
+        toast('فشل تغيير النشاط: ' + e.message, 'error');
+    }
+}
+
+// ============================================================
+// v6.8.0: توليد كود إعادة تعيين كلمة المرور
+// ============================================================
+async function generateResetCode(id) {
+    const lic = licensesCache.find(l => l.id === id);
+    if (!lic) { toast('الترخيص غير موجود', 'error'); return; }
+    const ttlStr = prompt(
+        `توليد كود إعادة تعيين كلمة المرور للترخيص #${id}\n(العميل: ${lic.client_name || '-'})\n\nكم عدد الساعات لبقاء الكود صالحاً؟ (1 - 168 ساعة، الافتراضي 24)`,
+        '24'
+    );
+    if (ttlStr === null) return;
+    const ttl = parseInt(ttlStr, 10);
+    if (!ttl || ttl < 1 || ttl > 168) {
+        toast('يرجى إدخال قيمة بين 1 و 168 ساعة', 'warning');
+        return;
+    }
+    if (!confirm('سيتم توليد كود جديد وإبطال أي كود سابق لهذا الترخيص. متابعة؟')) return;
+    try {
+        const r = await apiFetch('/licenses/' + id + '/generate-reset-code', {
+            method: 'POST',
+            body: { ttl_hours: ttl }
+        });
+        // خزّن الكود في نافذة الحوار لعرضه ثم إفراغها من الذاكرة عند إغلاقها
+        document.getElementById('reset-code-value').textContent = r.reset_code;
+        document.getElementById('reset-code-value').dataset.code = r.reset_code;
+        document.getElementById('reset-code-expires').textContent = fmtDate(r.expires_at);
+        document.getElementById('reset-code-machine').textContent =
+            (lic.machine_id || '').substring(0, 16) + ((lic.machine_id || '').length > 16 ? '…' : '');
+        const modal = new bootstrap.Modal(document.getElementById('resetCodeModal'));
+        modal.show();
+        // إفراغ الكود من الـ DOM عند إغلاق النافذة (منع تسربه في لقطات شاشة لاحقة)
+        document.getElementById('resetCodeModal').addEventListener('hidden.bs.modal', function once() {
+            document.getElementById('reset-code-value').textContent = '••••-••••';
+            delete document.getElementById('reset-code-value').dataset.code;
+            document.getElementById('resetCodeModal').removeEventListener('hidden.bs.modal', once);
+        }, { once: true });
+        loadLicenses();
+    } catch (e) {
+        toast('فشل توليد الكود: ' + e.message, 'error');
+    }
+}
+
+function copyResetCode() {
+    const el = document.getElementById('reset-code-value');
+    const code = (el && el.dataset && el.dataset.code) || (el ? el.textContent : '') || '';
+    if (!code || code.indexOf('•') !== -1) {
+        toast('لا يوجد كود للنسخ', 'warning');
+        return;
+    }
+    copyKeyValue(code);
 }
 
 // ============================================================
@@ -756,3 +862,8 @@ window.freezeLicense = freezeLicense;
 window.unfreezeLicense = unfreezeLicense;
 window.revokeLicense = revokeLicense;
 window.extendLicense = extendLicense;
+// v6.8.0
+window.changeBusinessType = changeBusinessType;
+window.saveChangeBusinessType = saveChangeBusinessType;
+window.generateResetCode = generateResetCode;
+window.copyResetCode = copyResetCode;

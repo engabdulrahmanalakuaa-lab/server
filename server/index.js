@@ -21,6 +21,7 @@ const { WebSocketServer } = require('ws');
 const db = require('./db');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
+const backupModule = require('./routes/backup'); // v6.9.3: نسخ احتياطي سحابي
 const adminAuth = require('./middleware/adminAuth');
 const rateLimit = require('./middleware/rateLimit');
 
@@ -32,13 +33,23 @@ app.set('trust proxy', 1); // على Render خلف proxy
 app.use(cors({
     origin: (process.env.CORS_ORIGINS || '*').split(',').map(s => s.trim())
 }));
+// v6.9.3: مُحلّل JSON بحدّ مرتفع (50mb) لمسار رفع النسخ الاحتياطية فقط،
+//         قبل المُحلّل العام (2mb) لبقية النقاط. النسخ الاحتياطية مضغوطة (gzip)
+//         لكنها بعد ترميز Base64 قد تتجاوز 2mb لقواعد بيانات كبيرة.
+app.use('/api/backup/upload', express.json({ limit: '50mb' }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false, limit: '2mb' }));
+
+// v6.9.3: نقطة إيقاظ/حياة على الجذر (يستدعيها عميل النسخ السحابي لإيقاظ Render)
+app.get('/ping', backupModule.pingHandler);
 
 // Rate Limiting للـ API
 app.use('/api/', rateLimit());
 
 // ---------------- Public API (client-facing) ----------------
+// v6.9.3: مسارات النسخ الاحتياطي السحابي (register/refresh/backup/restore)
+//         تُركَّب قبل apiRoutes لتفادي التقاط 404 من مسارات غير موجودة.
+app.use('/api', backupModule.router);
 app.use('/api', apiRoutes);
 
 // ---------------- Admin API (protected) ----------------
@@ -86,6 +97,9 @@ app.get('/', (req, res) => {
                 <li><code>POST /api/heartbeat</code> — تحديث دوري</li>
                 <li><code>POST /api/verify-key</code> — تحقق عام من مفتاح</li>
                 <li><code>GET /api/health</code> — فحص الحالة</li>
+                <li><code>POST /api/auth/register</code> — تسجيل جهاز (نسخ سحابي)</li>
+                <li><code>POST /api/backup/upload</code> — رفع نسخة احتياطية سحابية</li>
+                <li><code>GET /api/restore/latest</code> — استعادة آخر نسخة سحابية</li>
                 <li><code>/admin</code> — لوحة الإدارة (تحتاج مصادقة)</li>
                 <li><code>/web</code> — الواجهة الويب للعملاء</li>
                 <li><code>/ws</code> — WebSocket للتحديثات الحيّة</li>
@@ -202,6 +216,13 @@ async function bootstrap() {
     try {
         console.log('[boot] Initializing Neon PostgreSQL...');
         await db.initSchema();
+        // v6.9.3: جدول النسخ الاحتياطية السحابية (idempotent — يُنشأ إن لم يوجد)
+        try {
+            await backupModule.ensureBackupSchema();
+            console.log('[boot] ✅ ts_device_backups ready');
+        } catch (e) {
+            console.error('[boot] ⚠️ ensureBackupSchema failed (سيُعاد المحاولة عند أول رفع):', e.message);
+        }
         const h = await db.healthCheck();
         if (h.ok) {
             console.log('[boot] ✅ Neon connected:', h.version);

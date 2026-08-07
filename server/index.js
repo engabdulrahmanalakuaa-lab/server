@@ -1,7 +1,7 @@
 'use strict';
 /**
  * ═══════════════════════════════════════════════════════════════════════
- * تقنيات سوفت Pro v5.7.0 - License Server (Render.com + Neon)
+ * تقنيات سوفت Pro v6.9.3 - License Server (Render.com + Neon)
  * ═══════════════════════════════════════════════════════════════════════
  *  - Express API (activate + heartbeat + verify-key)
  *  - Admin Panel (HTTP Basic Auth)
@@ -86,7 +86,7 @@ app.get('/', (req, res) => {
     <div class="card">
         <h1>🔐 تقنيات سوفت Pro - خادم الترخيص</h1>
         <p style="font-size:18px; opacity:0.9;">
-            الإصدار 5.7.0 - يعمل على Render.com
+            الإصدار 6.9.3 - يعمل على Render.com
             <span class="badge">🐘 Neon PostgreSQL</span>
         </p>
 
@@ -233,7 +233,7 @@ async function bootstrap() {
 
         server.listen(PORT, HOST, () => {
             console.log('╔══════════════════════════════════════════════════════════════╗');
-            console.log('║  تقنيات سوفت Pro v5.7.0 - License Server                      ║');
+            console.log('║  تقنيات سوفت Pro v6.9.3 - License Server                      ║');
             console.log('║  Database: Neon PostgreSQL (persistent, never sleeps)         ║');
             console.log('╚══════════════════════════════════════════════════════════════╝');
             console.log('  Environment:', process.env.NODE_ENV || 'development');
